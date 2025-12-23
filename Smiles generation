@@ -1,0 +1,13 @@
+# Load the trained model using the same extension
+model = load_model("sevenlayers_LSTM_80_epoch_0.5_temperature.keras")
+
+# Generate SMILES strings using the trained model with temperature 0.8
+generated_smiles_list = generate_smiles(model, dataX, int_to_char, seed_length=50, num_chars=500, temperature=0.5, num_samples=100)
+
+# Print the generated SMILES strings
+print("Generated SMILES:")
+for smiles in generated_smiles_list:
+    print(smiles)
+
+Temperature is a hyperparameter that controls sampling randomness during SMILES generation can be varied from 0.3 to 1.2.
+Lower values (≈0.3) favor conservative, high-validity molecules, whereas higher values (≈1.2) increase structural diversity and novelty at the cost of validity.
