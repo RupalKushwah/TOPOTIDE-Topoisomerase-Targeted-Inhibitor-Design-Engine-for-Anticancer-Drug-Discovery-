@@ -1,0 +1,116 @@
+import numpy as np
+from keras.utils import to_categorical
+from keras.models import Sequential, load_model
+from keras.layers import LSTM, Dense
+from keras.optimizers import Adam
+from keras.callbacks import EarlyStopping
+from rdkit import Chem
+
+# Function to create the LSTM model
+def create_lstm_model(input_shape, output_shape, learning_rate=0.001):
+    model = Sequential()
+    model.add(LSTM(128, input_shape=input_shape, return_sequences=True))
+    model.add(LSTM(128, return_sequences=True))
+    model.add(LSTM(128, return_sequences=True))
+    model.add(LSTM(128, return_sequences=True))
+    model.add(LSTM(128, return_sequences=True))
+    model.add(LSTM(128))  # Last LSTM layer without return_sequences
+    model.add(Dense(output_shape, activation='softmax')) 
+    
+    optimizer = Adam(learning_rate=learning_rate)
+    
+    model.compile(loss='categorical_crossentropy', optimizer=optimizer)
+    return model
+
+# Function to train the LSTM model
+def train_lstm_model(model, X, y, epochs, batch_size):
+    early_stopping = EarlyStopping(monitor='loss', patience=15, restore_best_weights=True)
+    history = model.fit(X, y, epochs=epochs, batch_size=batch_size, callbacks=[early_stopping])
+    print("Training Loss History:", history.history['loss'])
+
+# Function to generate SMILES strings using the trained model
+def generate_smiles(model, dataX, int_to_char, seed_length, num_chars, temperature=0.5, num_samples=1):
+    generated_smiles_list = []
+    for _ in range(num_samples):
+        start = np.random.randint(0, len(dataX)-1)
+        pattern = dataX[start]
+        generated_smiles = ""
+        print("Seed:")
+        print("\"", ''.join([int_to_char[value] for value in pattern]), "\"")
+
+        for i in range(num_chars):
+            x = np.reshape(pattern, (1, len(pattern), 1))
+            x = x / float(n_vocab)
+            prediction = model.predict(x, verbose=0).squeeze()
+            prediction = np.log(prediction) / temperature
+            exp_preds = np.exp(prediction)
+            prediction = exp_preds / np.sum(exp_preds)
+            index = np.random.choice(range(len(prediction)), p=prediction)
+            result = int_to_char[index]
+            seq_in = [int_to_char[value] for value in pattern]
+            generated_smiles += result
+            pattern.append(index)
+            pattern = pattern[1:len(pattern)]
+
+            # Check if the generated sequence is valid
+            if is_valid_smiles(generated_smiles):
+                print(result, end='')
+            else:
+                # Handle invalid SMILES, e.g., by generating a new sequence
+                print("Invalid SMILES. Generating a new sequence...")
+                generated_smiles = ""
+                start = np.random.randint(0, len(dataX)-1)
+                pattern = dataX[start]
+
+        generated_smiles_list.append(generated_smiles)
+    
+    return generated_smiles_list
+
+# Function to check if a SMILES string is valid
+def is_valid_smiles(smiles):
+    try:
+        mol = Chem.MolFromSmiles(smiles)
+        return mol is not None and Chem.SanitizeMol(mol) == 0
+    except:
+        return False
+
+# Assuming DF, raw_text, char_to_int, int_to_char, and n_vocab are defined before this point
+
+# Calculate average sequence length from the dataset
+avg_seq_length = sum(len(smiles) for smiles in DF['Smiles']) // len(DF)
+print("Average sequence length in the dataset is:", avg_seq_length)
+
+# Define sequence length
+seq_length = avg_seq_length
+
+# Preparing datasets by matching the dataset lengths
+dataX = []
+dataY = []
+
+for i in range(0, len(raw_text) - seq_length, 1):
+    seq_in = raw_text[i:i + seq_length]
+    seq_out = raw_text[i + seq_length]
+    dataX.append([char_to_int[char] for char in seq_in])
+    dataY.append(char_to_int[seq_out])
+
+n_patterns = len(dataX)
+print("Total number of patterns (sequences) is:", n_patterns)
+
+# Reshape X to be [samples, time steps, features]
+X = np.reshape(dataX, (n_patterns, seq_length, 1))
+# Normalize data
+X = X / float(n_vocab)
+
+# One-hot encode the output variable
+y = to_categorical(dataY)
+
+# Specify the learning rate (e.g., 0.001)
+learning_rate = 0.001
+
+# Create and train the LSTM model with the specified learning rate
+model = create_lstm_model(X.shape[1:], y.shape[1], learning_rate=learning_rate)
+train_lstm_model(model, X, y, epochs=80,batch_size=1024)
+
+# Save the trained model with an appropriate extension
+model.save
+    
