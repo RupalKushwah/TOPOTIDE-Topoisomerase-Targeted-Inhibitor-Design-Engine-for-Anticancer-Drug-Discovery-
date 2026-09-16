@@ -1,0 +1,121 @@
+Data preprocessing
+import os
+import time
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+import torch
+import torch.nn as nn
+from torch.utils.data import TensorDataset, DataLoader
+
+from tqdm import tqdm_notebook
+from sklearn.preprocessing import MinMaxScaler
+
+# Correct file path and use pd.read_excel for Excel files
+file_path = r"E:\Ajay PP\DATA COLLECTION\compiled assay data.xlsx"
+data = pd.read_excel(file_path)
+# Create DataFrame
+df = pd.DataFrame(data)
+# Drop rows where 'Smiles' column is blank or missing
+df = df.dropna(subset=['Smiles'])
+
+# Count the total number of unique 'Smiles' entries
+total_smiles = df['Smiles'].nunique()
+print(f"Total number of unique smiles: {total_smiles}")
+
+# Remove duplicates based on 'Smiles' and 'Molecule ChEMBL ID' columns
+df_unique = df.drop_duplicates(subset=['Smiles', 'Molecule ChEMBL ID'])
+
+# Count the total number of unique 'Smiles' entries after removing duplicates
+total_unique_smiles = df_unique['Smiles'].nunique()
+print(f"Total number of unique smiles after removing duplicates: {total_unique_smiles}")
+
+# Verify the number of rows in the original and unique DataFrames
+print(f"Total number of rows in the original DataFrame: {len(df)}")
+print(f"Total number of rows in the DataFrame after removing duplicates: {len(df_unique)}")
+
+# Display the first few rows of the DataFrame to ensure duplicates are removed
+print(df_unique.head())
+
+# Function to highlight duplicates
+def colorcodes(x):
+    df = x.copy()
+    
+    df['Dup'] = df.duplicated(subset=['Smiles'], keep=False)
+    mask = df['Dup'] == True
+    
+    df.loc[mask, :] = 'background-color: orange'
+    df.loc[~mask, :] = 'background-color: ""'
+    return df.drop('Dup', axis=1)
+
+# Apply the styling to highlight duplicates
+styled_df = df_unique.style.apply(colorcodes, axis=None)
+
+# To display the styled DataFrame in a Jupyter notebook, you can use:
+styled_df
+
+# Save the unique DataFrame to a CSV file
+output_file_path = r"E:\Ajay PP\DATA COLLECTION\unique_data_compiled.csv"
+df_unique.to_csv(output_file_path, index=False)
+print(f"Unique data saved to {output_file_path}")
+
+import pandas as pd
+
+# Read the CSV file into a Pandas DataFrame
+df = pd.read_csv()
+
+# Define Smiles_list as a list of SMILES strings extracted from the DataFrame
+Smiles_list = df['Smiles'].tolist()
+
+# Find the maximum length of SMILES strings
+max_length = max(len(smiles) for smiles in Smiles_list)
+
+# Print the maximum length
+print("Maximum length of SMILES strings:", max_length)
+# Creating mapping for each character to integer
+unique_chars = sorted(list(set(raw_text)))
+
+# Maps each unique character as an int
+char_to_int = dict((c, i) for i, c in enumerate(unique_chars))
+# Manually updates \n
+char_to_int.update({-1: "\n"})
+
+# Int to char dictionary
+int_to_char = dict((i, c) for i, c in enumerate(unique_chars))
+int_to_char.update({"\\n": -1})
+# Summarize the loaded data to provide lengths for preparing datasets
+n_chars = len(raw_text)
+n_vocab = len(unique_chars)
+
+print("Total number of characters in the file is:", n_chars)
+print("Total number of unique characters in the file is:", n_vocab)
+
+# Calculate average sequence length from the dataset
+avg_seq_length = sum(len(smiles) for smiles in DF['Smiles']) // len(DF)
+print("Average sequence length in the dataset is:", avg_seq_length)
+
+# Define sequence length
+seq_length = avg_seq_length
+
+# Preparing datasets by matching the dataset lengths
+dataX = []
+dataY = []
+
+for i in range(0, n_chars - seq_length, 1):
+    seq_in = raw_text[i:i + seq_length]
+    seq_out = raw_text[i + seq_length]
+    dataX.append([char_to_int[char] for char in seq_in])
+    dataY.append(char_to_int[seq_out])
+
+n_patterns = len(dataX)
+print("Total number of patterns (sequences) is:", n_patterns)
+
+# Reshape X to be [samples, time steps, features]
+X = np.reshape(dataX, (n_patterns, seq_length, 1))
+# Normalize data
+X = X / float(n_vocab)
+
+# One-hot encode the output variable
+y = to_categorical(dataY)
