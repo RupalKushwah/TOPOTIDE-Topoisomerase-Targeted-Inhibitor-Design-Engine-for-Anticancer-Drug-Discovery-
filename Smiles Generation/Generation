@@ -1,5 +1,5 @@
 # Load the trained model using the same extension
-model = load_model("sevenlayers_LSTM_80_epoch_0.8_temperature.keras")
+model = load_model("sevenlayers_LSTM_80_epoch_0.8_temperature-RL.keras")
 
 # Generate SMILES strings using the trained model with temperature 0.8
 generated_smiles_list = generate_smiles(model, dataX, int_to_char, seed_length=50, num_chars=500, temperature=0.8, num_samples=100)
