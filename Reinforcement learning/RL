@@ -1,0 +1,67 @@
+
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+
+from tensorflow.keras.models import load_model
+from rdkit import Chem, DataStructs
+from rdkit.Chem import AllChem
+# Load the fine-tuned model
+
+finetuned_model_path = "FINETUNED_MODEL.keras"
+
+policy = load_model(finetuned_model
+prior = load_model(finetuned_model)
+
+prior.trainable = False
+policy.trainable = True
+
+optimizer = tf.keras.optimizers.Adam(learning_rate=1e-5)
+
+def get_fingerprint(smiles):
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return None
+    return AllChem.GetMorganFingerprintAsBitVect(
+        mol, radius=2, nBits=2048
+    )
+
+reference_fingerprints = [
+    fp for smiles in reference_smiles
+    if (fp := get_fingerprint(smiles)) is not None
+]
+
+if not reference_fingerprints:
+    raise ValueError("No valid reference inhibitor fingerprints found.")
+
+# Add the verified structural-alert SMARTS patterns used in your study.
+structural_alert_smarts = [
+    # Add actual SMARTS patterns here
+]
+
+alert_patterns = [
+    Chem.MolFromSmarts(s) for s in structural_alert_smarts
+]
+
+if any(pattern is None for pattern in alert_patterns):
+    raise ValueError("Check the structural-alert SMARTS patterns.")
+
+def calculate_reward(smiles):
+    mol = Chem.MolFromSmiles(smiles)
+
+    if mol is None:
+        return -1.0
+
+    if any(mol.HasSubstructMatch(p) for p in alert_patterns):
+        return -1.0
+
+    fingerprint = AllChem.GetMorganFingerprintAsBitVect(
+        mol, radius=2, nBits=2048
+    )
+
+    similarity = max(
+        DataStructs.TanimotoSimilarity(fingerprint, ref)
+        for ref in reference_fingerprints
+    )
+
+    return 1.0 + similarity
